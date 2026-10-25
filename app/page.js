@@ -44,13 +44,13 @@ export default function Home() {
     fetchBenefits();
   }, []);
 
-  // Otomatis merender ulang widget Turnstile setiap kali tampilan berpindah (Login / Register)
+  // Otomatis render ulang Cloudflare Turnstile saat ganti tampilan
   useEffect(() => {
     if (typeof window !== 'undefined' && window.turnstile) {
       try {
         window.turnstile.render('.cf-turnstile');
       } catch (e) {
-        // Mengabaikan error jika widget sudah aktif
+        // Mengabaikan log jika widget sudah aktif
       }
     }
   }, [currentView]);
@@ -62,7 +62,6 @@ export default function Home() {
       return;
     }
 
-    // Ambil token Turnstile CAPTCHA dari DOM
     const turnstileToken = document.querySelector('[name="cf-turnstile-response"]')?.value;
 
     try {
