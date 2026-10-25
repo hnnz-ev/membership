@@ -224,9 +224,10 @@ export default function Home() {
                 />
               </div>
 
-              <div className="bg-[#1D031B] border border-dashed border-gray-700/80 rounded-lg p-3 text-center text-xs text-gray-400">
-                🔒 Verifikasi Keamanan CAPTCHA Aktif
-              </div>
+              <div 
+                className="cf-turnstile flex justify-center my-3" 
+                data-sitekey="0x4AAAAAAFk2xH656PmOtqbr" 
+              />
 
               <button type="submit" className="w-full bg-[#E60070] hover:bg-[#c4005f] font-semibold py-3 rounded-lg text-xs transition shadow-lg">
                 Masuk ke Member Area
