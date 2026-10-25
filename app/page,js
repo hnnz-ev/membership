@@ -1,3 +1,16 @@
+'use client';
+
+export default function Home() {
+  return (
+    <main className="min-h-screen bg-[#1D031B] text-white flex items-center justify-center p-4">
+      <div className="text-center space-y-4">
+        <h1 className="text-3xl font-bold text-[#E60070]">Bukan Hannz Membership</h1>
+        <p className="text-gray-300">Website Fullstack Berhasil Aktif!</p>
+      </div>
+    </main>
+  );
+}
+
 <!DOCTYPE html>
 <html lang="id" class="dark">
 <head>
