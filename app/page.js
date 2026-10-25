@@ -44,6 +44,16 @@ export default function Home() {
     fetchBenefits();
   }, []);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.turnstile) {
+      try {
+        window.turnstile.render('.cf-turnstile');
+      } catch (e) {
+        // Mengabaikan log jika widget sudah aktif
+      }
+    }
+  }, [currentView]);
+  
   const handleRegister = async (e) => {
     e.preventDefault();
     if (!registerForm.email.toLowerCase().endsWith('@gmail.com')) {
