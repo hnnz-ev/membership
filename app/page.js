@@ -1,55 +1,33 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 export default function Home() {
-  // Navigation & Auth States
-  const [currentView, setCurrentView] = useState('login'); // 'login' | 'register' | 'pending' | 'dashboard' | 'admin'
+  const [currentView, setCurrentView] = useState('login'); // 'login' | 'register' | 'pending' | 'dashboard'
   const [user, setUser] = useState(null);
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
 
   // Data States
   const [benefits, setBenefits] = useState([]);
-  const [usersList, setUsersList] = useState([]);
-  const [claimLogs, setClaimLogs] = useState([]);
-  const [config, setConfig] = useState({
-    announcementText: 'Stok benefit diperbarui setiap hari! Harap klaim sesuai limit harian.',
-    groupLink: 'https://chat.whatsapp.com/demo'
-  });
-
-  // UI / Modal States
   const [showAnnouncement, setShowAnnouncement] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [activeClaimData, setActiveClaimData] = useState(null);
-  const [activeTab, setActiveTab] = useState('benefits'); // Member: 'benefits' | 'history' | 'password'
-  const [adminTab, setAdminTab] = useState('users'); // Admin: 'users' | 'benefits' | 'logs' | 'password'
+  const [activeTab, setActiveTab] = useState('benefits'); // 'benefits' | 'password'
 
-  // Notification Toast State
+  // Toast State
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
-  // Forms States
+  // Forms
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [registerForm, setRegisterForm] = useState({ email: '', whatsapp: '', password: '' });
   const [forgotForm, setForgotForm] = useState({ email: '', whatsapp: '', newPassword: '' });
   const [changePassForm, setChangePassForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
-  const [adminPassForm, setAdminPassForm] = useState({ oldPassword: '', newPassword: '' });
-
-  // Add Benefit Form State
-  const [benefitForm, setBenefitForm] = useState({
-    title: '',
-    description: '',
-    type: 'account', // 'url' | 'account'
-    url: '',
-    accountsRaw: '',
-    dailyLimit: 1
-  });
 
   const showToastMsg = (message, type = 'success') => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3500);
   };
 
-  // Initial Data Fetching from API / Database
   const fetchBenefits = async () => {
     try {
       const res = await fetch('/api/benefits');
@@ -62,27 +40,14 @@ export default function Home() {
     }
   };
 
-  const fetchUsers = async () => {
-    try {
-      const res = await fetch('/api/admin/users');
-      if (res.ok) {
-        const data = await res.json();
-        setUsersList(data.users || []);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   useEffect(() => {
     fetchBenefits();
   }, []);
 
-  // ---------------- AUTH HANDLERS ----------------
   const handleRegister = async (e) => {
     e.preventDefault();
     if (!registerForm.email.toLowerCase().endsWith('@gmail.com')) {
-      showToastMsg('Registrasi hanya diperbolehkan menggunakan email domain @gmail.com!', 'error');
+      showToastMsg('Registrasi hanya diperbolehkan menggunakan domain @gmail.com!', 'error');
       return;
     }
 
@@ -99,7 +64,7 @@ export default function Home() {
         return;
       }
 
-      showToastMsg('Pendaftaran berhasil! Akun Anda kini menunggu persetujuan admin.');
+      showToastMsg('Pendaftaran berhasil! Akun Anda sedang menunggu persetujuan admin.');
       setUser(data.user);
       setCurrentView('pending');
       setRegisterForm({ email: '', whatsapp: '', password: '' });
@@ -110,15 +75,6 @@ export default function Home() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    // Admin Master Shortcut Login
-    if (loginForm.email === 'admin@gmail.com' && loginForm.password === 'admin123') {
-      setIsAdminLoggedIn(true);
-      setCurrentView('admin');
-      fetchUsers();
-      showToastMsg('Selamat datang di Panel Admin!');
-      return;
-    }
-
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
@@ -176,7 +132,6 @@ export default function Home() {
     }
   };
 
-  // ---------------- MEMBER HANDLERS ----------------
   const handleClaim = async (benefitId) => {
     if (!user) return;
     if (user.isFrozen) {
@@ -214,90 +169,15 @@ export default function Home() {
       showToastMsg('Konfirmasi password baru tidak cocok!', 'error');
       return;
     }
-
     showToastMsg('Password akun berhasil diubah!');
     setChangePassForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
   };
 
-  // ---------------- ADMIN HANDLERS ----------------
-  const handleApproveUser = async (userId, action) => {
-    try {
-      const res = await fetch('/api/admin/users', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, action })
-      });
-      if (res.ok) {
-        showToastMsg(`Status user berhasil diperbarui: ${action}`);
-        fetchUsers();
-      }
-    } catch (err) {
-      showToastMsg('Gagal memproses aksi admin', 'error');
-    }
-  };
-
-  const handleToggleFreezeUser = async (userId, currentFreezeState) => {
-    try {
-      const res = await fetch('/api/admin/users', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, action: currentFreezeState ? 'unfreeze' : 'freeze' })
-      });
-      if (res.ok) {
-        showToastMsg(currentFreezeState ? 'Akses user dipulihkan!' : 'Akses user dibekukan!');
-        fetchUsers();
-      }
-    } catch (err) {
-      showToastMsg('Gagal memproses freeze/unfreeze', 'error');
-    }
-  };
-
-  const handleCreateBenefit = async (e) => {
-    e.preventDefault();
-    try {
-      const accountsArray = benefitForm.accountsRaw
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0);
-
-      const payload = {
-        title: benefitForm.title,
-        description: benefitForm.description,
-        type: benefitForm.type,
-        url: benefitForm.type === 'url' ? benefitForm.url : '',
-        accounts: benefitForm.type === 'account' ? accountsArray : [],
-        dailyLimit: parseInt(benefitForm.dailyLimit) || 1
-      };
-
-      const res = await fetch('/api/benefits', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        showToastMsg('Benefit baru berhasil ditambahkan!');
-        setBenefitForm({
-          title: '',
-          description: '',
-          type: 'account',
-          url: '',
-          accountsRaw: '',
-          dailyLimit: 1
-        });
-        fetchBenefits();
-      }
-    } catch (err) {
-      showToastMsg('Gagal menambah benefit', 'error');
-    }
-  };
-
-  // ---------------- RENDER VIEWS ----------------
   return (
     <div className="min-h-screen bg-[#1D031B] text-white font-sans antialiased selection:bg-[#E60070] selection:text-white">
       {/* Toast Notification */}
       {toast.show && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-2xl text-xs font-semibold flex items-center gap-2 border ${
+        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-2xl text-xs font-semibold flex items-center gap-2 border ${
           toast.type === 'error' ? 'bg-rose-950 border-rose-600 text-rose-200' : 'bg-emerald-950 border-emerald-600 text-emerald-200'
         }`}>
           <span>{toast.type === 'error' ? '⚠️' : '✅'}</span>
@@ -305,22 +185,9 @@ export default function Home() {
         </div>
       )}
 
-      {/* Demo View Switcher Top Bar */}
-      <div className="bg-[#2C0A29]/90 border-b border-gray-800 px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-        <span className="font-bold text-[#E60070]">Bukan Hannz System Switcher</span>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={() => setCurrentView('login')} className="px-2.5 py-1 bg-white/5 hover:bg-white/10 rounded">Login</button>
-          <button onClick={() => setCurrentView('register')} className="px-2.5 py-1 bg-white/5 hover:bg-white/10 rounded">Register</button>
-          <button onClick={() => setCurrentView('pending')} className="px-2.5 py-1 bg-white/5 hover:bg-white/10 rounded">Pending View</button>
-          <button onClick={() => { setCurrentView('dashboard'); setUser({ _id: '1', email: 'member@gmail.com', status: 'approved', isFrozen: false }); }} className="px-2.5 py-1 bg-[#E60070] rounded">Member Dashboard</button>
-          <button onClick={() => { setCurrentView('dashboard'); setUser({ _id: '2', email: 'frozen@gmail.com', status: 'approved', isFrozen: true }); }} className="px-2.5 py-1 bg-rose-700 rounded">Member Dibekukan</button>
-          <button onClick={() => { setCurrentView('admin'); setIsAdminLoggedIn(true); fetchUsers(); }} className="px-2.5 py-1 bg-purple-700 rounded">Panel Admin</button>
-        </div>
-      </div>
-
-      {/* 1. AUTH LOGIN VIEW */}
+      {/* LOGIN VIEW */}
       {currentView === 'login' && (
-        <div className="min-h-[calc(100vh-45px)] flex items-center justify-center p-4">
+        <div className="min-h-screen flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-[#2C0A29] border border-[#E60070]/30 rounded-2xl p-6 shadow-2xl">
             <div className="text-center mb-6">
               <h1 className="text-2xl font-black text-[#E60070] tracking-wider">BUKAN HANNZ</h1>
@@ -366,19 +233,24 @@ export default function Home() {
               </button>
             </form>
 
-            <div className="mt-6 text-center text-xs text-gray-400 border-t border-gray-800/80 pt-4">
-              Belum punya akun?{' '}
-              <button onClick={() => setCurrentView('register')} className="text-[#E60070] font-semibold hover:underline">
-                Daftar Sekarang
-              </button>
+            <div className="mt-6 flex justify-between items-center text-xs text-gray-400 border-t border-gray-800/80 pt-4">
+              <div>
+                Belum punya akun?{' '}
+                <button onClick={() => setCurrentView('register')} className="text-[#E60070] font-semibold hover:underline">
+                  Daftar
+                </button>
+              </div>
+              <Link href="/admin" className="text-gray-500 hover:text-gray-300 transition text-[11px]">
+                Panel Admin →
+              </Link>
             </div>
           </div>
         </div>
       )}
 
-      {/* 2. AUTH REGISTER VIEW */}
+      {/* REGISTER VIEW */}
       {currentView === 'register' && (
-        <div className="min-h-[calc(100vh-45px)] flex items-center justify-center p-4">
+        <div className="min-h-screen flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-[#2C0A29] border border-[#E60070]/30 rounded-2xl p-6 shadow-2xl">
             <h2 className="text-xl font-bold text-[#E60070] mb-2 text-center">Formulir Pendaftaran</h2>
             <p className="text-xs text-gray-400 text-center mb-6">Wajib menggunakan email bertipe @gmail.com</p>
@@ -439,9 +311,9 @@ export default function Home() {
         </div>
       )}
 
-      {/* 3. PENDING APPROVAL VIEW */}
+      {/* PENDING APPROVAL VIEW */}
       {currentView === 'pending' && (
-        <div className="min-h-[calc(100vh-45px)] flex items-center justify-center p-4">
+        <div className="min-h-screen flex items-center justify-center p-4">
           <div className="max-w-md w-full bg-[#2C0A29] border border-[#F0C37A]/40 rounded-2xl p-8 text-center shadow-2xl">
             <div className="w-16 h-16 bg-[#F0C37A]/10 text-[#F0C37A] rounded-full flex items-center justify-center mx-auto mb-4 text-3xl font-bold border border-[#F0C37A]/30">
               ⏳
@@ -459,16 +331,15 @@ export default function Home() {
               💬 Konfirmasi Langsung via WhatsApp Admin
             </a>
             <button onClick={() => setCurrentView('login')} className="mt-4 text-xs text-gray-400 hover:underline">
-              Kembali ke Login
+              Kembali ke Halaman Login
             </button>
           </div>
         </div>
       )}
 
-      {/* 4. MEMBER DASHBOARD VIEW */}
+      {/* MEMBER DASHBOARD VIEW */}
       {currentView === 'dashboard' && user && (
-        <div className="min-h-[calc(100vh-45px)] flex flex-col md:flex-row">
-          {/* Sidebar */}
+        <div className="min-h-screen flex flex-col md:flex-row">
           <aside className="w-full md:w-64 bg-[#2C0A29] border-r border-gray-800 p-6 flex flex-col justify-between">
             <div>
               <h1 className="text-lg font-black text-[#E60070] tracking-wider mb-6">MEMBER AREA</h1>
@@ -480,14 +351,6 @@ export default function Home() {
                   }`}
                 >
                   🎁 Katalog Benefit
-                </button>
-                <button
-                  onClick={() => setActiveTab('history')}
-                  className={`w-full text-left px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-                    activeTab === 'history' ? 'bg-[#E60070] text-white' : 'text-gray-400 hover:bg-white/5'
-                  }`}
-                >
-                  📜 Riwayat Klaim
                 </button>
                 <button
                   onClick={() => setActiveTab('password')}
@@ -504,9 +367,7 @@ export default function Home() {
             </button>
           </aside>
 
-          {/* Main Content Area */}
           <main className="flex-1 p-6 md:p-8 space-y-6">
-            {/* FROZEN USER WARNING BANNER */}
             {user.isFrozen && (
               <div className="bg-rose-950/80 border border-rose-600 rounded-xl p-4 flex items-center justify-between text-xs text-rose-200 shadow-xl">
                 <div className="flex items-center gap-3">
@@ -519,7 +380,6 @@ export default function Home() {
               </div>
             )}
 
-            {/* TAB: BENEFITS */}
             {activeTab === 'benefits' && (
               <section className="space-y-6">
                 <header className="flex justify-between items-center">
@@ -587,7 +447,6 @@ export default function Home() {
               </section>
             )}
 
-            {/* TAB: CHANGE PASSWORD */}
             {activeTab === 'password' && (
               <section className="max-w-md bg-[#2C0A29] border border-gray-800 rounded-xl p-6">
                 <h3 className="text-sm font-bold text-[#E60070] mb-4">Ubah Password Akun</h3>
@@ -632,180 +491,16 @@ export default function Home() {
         </div>
       )}
 
-      {/* 5. ADMIN PANEL VIEW */}
-      {currentView === 'admin' && isAdminLoggedIn && (
-        <div className="min-h-[calc(100vh-45px)] flex flex-col md:flex-row">
-          <aside className="w-full md:w-64 bg-[#2C0A29] border-r border-gray-800 p-6">
-            <h1 className="text-lg font-black text-[#E60070] tracking-wider mb-6">ADMIN PANEL</h1>
-            <nav className="space-y-2">
-              <button
-                onClick={() => setAdminTab('users')}
-                className={`w-full text-left px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-                  adminTab === 'users' ? 'bg-[#E60070] text-white' : 'text-gray-400 hover:bg-white/5'
-                }`}
-              >
-                👥 Kelola User & Freeze
-              </button>
-              <button
-                onClick={() => setAdminTab('benefits')}
-                className={`w-full text-left px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-                  adminTab === 'benefits' ? 'bg-[#E60070] text-white' : 'text-gray-400 hover:bg-white/5'
-                }`}
-              >
-                ➕ Tambah Benefit & Stok
-              </button>
-            </nav>
-          </aside>
-
-          <main className="flex-1 p-6 md:p-8 space-y-6">
-            {/* ADMIN TAB: USERS */}
-            {adminTab === 'users' && (
-              <section className="bg-[#2C0A29] border border-gray-800 rounded-2xl p-6">
-                <h3 className="text-sm font-bold text-white mb-4">Daftar Pengguna & Akses</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="border-b border-gray-800 text-gray-400">
-                      <tr>
-                        <th className="pb-3">Email Google</th>
-                        <th className="pb-3">WhatsApp</th>
-                        <th className="pb-3">Status</th>
-                        <th className="pb-3 text-right">Tindakan Admin</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-800/50">
-                      {usersList.length === 0 ? (
-                        <tr>
-                          <td colSpan="4" className="py-4 text-center text-gray-500">Belum ada user terdaftar</td>
-                        </tr>
-                      ) : (
-                        usersList.map((u) => (
-                          <tr key={u._id}>
-                            <td className="py-3 font-medium">{u.email}</td>
-                            <td className="py-3 text-gray-300">{u.whatsapp}</td>
-                            <td className="py-3">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                u.isFrozen
-                                  ? 'bg-rose-950 text-rose-400 border border-rose-800'
-                                  : u.status === 'approved'
-                                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                                  : 'bg-amber-950 text-amber-400 border border-amber-800'
-                              }`}>
-                                {u.isFrozen ? 'DIBEKUKAN' : u.status.toUpperCase()}
-                              </span>
-                            </td>
-                            <td className="py-3 text-right space-x-2">
-                              {u.status === 'pending' && (
-                                <button
-                                  onClick={() => handleApproveUser(u._id, 'approved')}
-                                  className="bg-emerald-600 hover:bg-emerald-700 px-3 py-1 rounded text-white font-medium"
-                                >
-                                  Approve
-                                </button>
-                              )}
-                              <button
-                                onClick={() => handleToggleFreezeUser(u._id, u.isFrozen)}
-                                className={`px-3 py-1 rounded text-white font-medium ${
-                                  u.isFrozen ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-rose-600 hover:bg-rose-700'
-                                }`}
-                              >
-                                {u.isFrozen ? 'Pulihkan Akses' : 'Cabut Akses (Freeze)'}
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            )}
-
-            {/* ADMIN TAB: ADD BENEFIT */}
-            {adminTab === 'benefits' && (
-              <section className="max-w-xl bg-[#2C0A29] border border-gray-800 rounded-2xl p-6">
-                <h3 className="text-sm font-bold text-[#E60070] mb-4">Tambah Benefit / Stok Baru</h3>
-                <form onSubmit={handleCreateBenefit} className="space-y-4">
-                  <div>
-                    <label className="block text-xs text-gray-300 mb-1">Judul Benefit</label>
-                    <input
-                      type="text"
-                      placeholder="Contoh: Akun CapCut Pro 1 Bulan"
-                      value={benefitForm.title}
-                      onChange={(e) => setBenefitForm({ ...benefitForm, title: e.target.value })}
-                      className="w-full bg-[#1D031B] border border-gray-800 rounded-lg p-3 text-xs outline-none focus:border-[#E60070]"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs text-gray-300 mb-1">Tipe Benefit</label>
-                    <select
-                      value={benefitForm.type}
-                      onChange={(e) => setBenefitForm({ ...benefitForm, type: e.target.value })}
-                      className="w-full bg-[#1D031B] border border-gray-800 rounded-lg p-3 text-xs outline-none focus:border-[#E60070]"
-                    >
-                      <option value="account">Format Akun | Password (Baris Multiline)</option>
-                      <option value="url">Link URL Direct</option>
-                    </select>
-                  </div>
-
-                  {benefitForm.type === 'account' ? (
-                    <div>
-                      <label className="block text-xs text-gray-300 mb-1">Stok Akun (1 Baris = 1 Stok Akun)</label>
-                      <textarea
-                        rows="4"
-                        placeholder={'email1@gmail.com|pass123\nemail2@gmail.com|pass456'}
-                        value={benefitForm.accountsRaw}
-                        onChange={(e) => setBenefitForm({ ...benefitForm, accountsRaw: e.target.value })}
-                        className="w-full bg-[#1D031B] border border-gray-800 rounded-lg p-3 text-xs font-mono outline-none focus:border-[#E60070]"
-                        required
-                      />
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="block text-xs text-gray-300 mb-1">Link URL Benefit</label>
-                      <input
-                        type="url"
-                        placeholder="https://drive.google.com/..."
-                        value={benefitForm.url}
-                        onChange={(e) => setBenefitForm({ ...benefitForm, url: e.target.value })}
-                        className="w-full bg-[#1D031B] border border-gray-800 rounded-lg p-3 text-xs outline-none focus:border-[#E60070]"
-                        required
-                      />
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-xs text-gray-300 mb-1">Limit Klaim Harian Per Member</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={benefitForm.dailyLimit}
-                      onChange={(e) => setBenefitForm({ ...benefitForm, dailyLimit: e.target.value })}
-                      className="w-full bg-[#1D031B] border border-gray-800 rounded-lg p-3 text-xs outline-none focus:border-[#E60070]"
-                    />
-                  </div>
-
-                  <button type="submit" className="w-full bg-[#E60070] hover:bg-[#c4005f] py-3 rounded-lg text-xs font-bold transition">
-                    Simpan & Publikasikan Benefit
-                  </button>
-                </form>
-              </section>
-            )}
-          </main>
-        </div>
-      )}
-
       {/* ANNOUNCEMENT POPUP MODAL */}
       {showAnnouncement && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="max-w-md w-full bg-[#2C0A29] border border-[#E60070] rounded-2xl p-6 text-center space-y-4 shadow-2xl">
             <span className="text-4xl">📢</span>
             <h3 className="text-lg font-bold text-[#E60070]">Informasi & Info Stok Benefit</h3>
-            <p className="text-xs text-gray-300 leading-relaxed">{config.announcementText}</p>
+            <p className="text-xs text-gray-300 leading-relaxed">Stok benefit diperbarui setiap hari! Harap klaim sesuai limit harian.</p>
 
             <a
-              href={config.groupLink}
+              href="https://chat.whatsapp.com/demo"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-block w-full bg-emerald-600 hover:bg-emerald-700 font-bold py-3 rounded-xl text-xs transition"
