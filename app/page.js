@@ -44,16 +44,17 @@ export default function Home() {
     fetchBenefits();
   }, []);
 
+  // Otomatis merender ulang widget Turnstile setiap kali tampilan berpindah (Login / Register)
   useEffect(() => {
     if (typeof window !== 'undefined' && window.turnstile) {
       try {
         window.turnstile.render('.cf-turnstile');
       } catch (e) {
-        // Mengabaikan log jika widget sudah aktif
+        // Mengabaikan error jika widget sudah aktif
       }
     }
   }, [currentView]);
-  
+
   const handleRegister = async (e) => {
     e.preventDefault();
     if (!registerForm.email.toLowerCase().endsWith('@gmail.com')) {
@@ -61,16 +62,19 @@ export default function Home() {
       return;
     }
 
+    // Ambil token Turnstile CAPTCHA dari DOM
+    const turnstileToken = document.querySelector('[name="cf-turnstile-response"]')?.value;
+
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(registerForm)
+        body: JSON.stringify({ ...registerForm, turnstileToken })
       });
       const data = await res.json();
 
       if (!res.ok) {
-        showToastMsg(data.error || 'Pendaftaran gagal', 'error');
+        showToastMsg(data.error || 'Pendaftaran gagal / CAPTCHA belum dicentang', 'error');
         return;
       }
 
@@ -234,10 +238,8 @@ export default function Home() {
                 />
               </div>
 
-              <div 
-                className="cf-turnstile flex justify-center my-3" 
-                data-sitekey="0x4AAAAAAFk2xH656PmOtqbr" 
-              />
+              {/* Widget Turnstile CAPTCHA Login */}
+              <div className="cf-turnstile flex justify-center my-3" data-sitekey="0x4AAAAAAAFk2xH656PmOtqbr" />
 
               <button type="submit" className="w-full bg-[#E60070] hover:bg-[#c4005f] font-semibold py-3 rounded-lg text-xs transition shadow-lg">
                 Masuk ke Member Area
@@ -303,10 +305,8 @@ export default function Home() {
                 />
               </div>
 
-              <div 
-                className="cf-turnstile flex justify-center my-3" 
-                data-sitekey="0x4AAAAAAAFk2xH656PmOtqbr" 
-              />
+              {/* Widget Turnstile CAPTCHA Register */}
+              <div className="cf-turnstile flex justify-center my-3" data-sitekey="0x4AAAAAAAFk2xH656PmOtqbr" />
 
               <button type="submit" className="w-full bg-[#E60070] hover:bg-[#c4005f] font-semibold py-3 rounded-lg text-xs transition">
                 Selesaikan Pendaftaran
