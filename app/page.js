@@ -44,17 +44,6 @@ export default function Home() {
     fetchBenefits();
   }, []);
 
-  // Otomatis render ulang Cloudflare Turnstile saat ganti tampilan
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.turnstile) {
-      try {
-        window.turnstile.render('.cf-turnstile');
-      } catch (e) {
-        // Mengabaikan log jika widget sudah aktif
-      }
-    }
-  }, [currentView]);
-
   const handleRegister = async (e) => {
     e.preventDefault();
     if (!registerForm.email.toLowerCase().endsWith('@gmail.com')) {
@@ -62,18 +51,16 @@ export default function Home() {
       return;
     }
 
-    const turnstileToken = document.querySelector('[name="cf-turnstile-response"]')?.value;
-
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...registerForm, turnstileToken })
+        body: JSON.stringify(registerForm)
       });
       const data = await res.json();
 
       if (!res.ok) {
-        showToastMsg(data.error || 'Pendaftaran gagal / CAPTCHA belum dicentang', 'error');
+        showToastMsg(data.error || 'Pendaftaran gagal', 'error');
         return;
       }
 
@@ -237,9 +224,6 @@ export default function Home() {
                 />
               </div>
 
-              {/* Widget Turnstile CAPTCHA Login */}
-              <div className="cf-turnstile flex justify-center my-3" data-sitekey="0x4AAAAAAAFk2xH656PmOtqbr" />
-
               <button type="submit" className="w-full bg-[#E60070] hover:bg-[#c4005f] font-semibold py-3 rounded-lg text-xs transition shadow-lg">
                 Masuk ke Member Area
               </button>
@@ -303,9 +287,6 @@ export default function Home() {
                   required
                 />
               </div>
-
-              {/* Widget Turnstile CAPTCHA Register */}
-              <div className="cf-turnstile flex justify-center my-3" data-sitekey="0x4AAAAAAAFk2xH656PmOtqbr" />
 
               <button type="submit" className="w-full bg-[#E60070] hover:bg-[#c4005f] font-semibold py-3 rounded-lg text-xs transition">
                 Selesaikan Pendaftaran
